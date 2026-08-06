@@ -34,7 +34,7 @@ Architecture of Initial Handshake:
 ```
 1. The drone acting as an Access Point (AP) begins transmitting beacon frames on radio frequency (RF) 2.4 GHz band on channel 2.
 
-2. The device transmits a probe request to identify the network; receives a probe response from the drone.
+2. The device transmits a probe request to identify the network; the drone responds with a probe response.
 
 3. The device transmits an authentication request to the network; the drone responds with an authentication response. 
 
@@ -55,6 +55,26 @@ The information regarding key network information required at this stage can be 
 | **Password**  | `NULL`                        | No password; you cannot set one either.
 | **RF Band**   | `2.4 GHz`                     | IEEE 802.11b/g/n
 | **Channel**   | `2`                           | Operates at 2417 MHz
+
+__NOTE(3)__: I have not observed the drone operating on a different channel other than 2, but have not verified that this is hardcoded. I will provide an amendment following further research.
+
+## *<p align='center'> Networking Overview | Primary Handshake </p>*
+
+Following a successful initial handshake, the device has established a successful connection to the drone's network. The 'primary' handshake regards establishing a connection to the live video streaming from the drone. It is only considered 'primary' for the purposes of differentiating the initial network connection and establishing a live video connection.
+
+This handshake has an added layer of security, but that layer is rather thin and took me a few hours to bypass it.  
+
+For an average users, the process for establishing a live video feed from the drone is as follows:
+```
+1. From the users phone, connect to the drone's WiFi network.
+2. Start the SNAPTAIN FPV app after a successful connection.
+3. Select the 'FUNCTION' button in the bottom-right corner and a live video stream appears.
+```
+
+I utilized *tshark* to analyze the data sent between the device and the drone during this period to decode what information is being exchanged. 
+
+
+
 
 
 
