@@ -45,7 +45,7 @@ The network does not require a password by default. From preliminary research, i
 
 At this stage, any data being transmitted to and from the network is unencrypted and broadcasted in plaintext. This data can be intercepted by individuals in close proximity and the means to do so.
 
-### *<p align='center'> Initial Handshake | Key Network Information </p>*
+### Initial Handshake | Key Network Information 
 
 The information regarding key network information required at this stage can be found in the table below:
 
