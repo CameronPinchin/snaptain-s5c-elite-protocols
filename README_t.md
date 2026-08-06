@@ -43,7 +43,21 @@ Architecture of Initial Handshake:
 
 The network does not require a password by default. From preliminary research, it appears you also cannot modify this yourself to improve security. This means, after the association exchange (4) is complete, the device has connected to the network. 
 
-At this stage, any data being transmitted to and from the network and the device is unencrypted and broadcasted in plaintext. This data can be intercepted by individuals in close proximity and the means to do so.
+At this stage, any data being transmitted to and from the network is unencrypted and broadcasted in plaintext. This data can be intercepted by individuals in close proximity and the means to do so.
+
+### *<p align='center'> Initial Handshake | Key Network Information </p>*
+
+The information regarding key network information required at this stage can be found in the table below:
+
+| Parameter     | Value                         | Notes
+| :---          | :---                          | :---
+| **SSID**      | `SNAPTAIN ELITE S5C XXXXXX`   | This should be consistent across all models.
+| **Password**  | `NULL`                        | No password; you cannot set one either.
+| **RF Band**   | `2.4 GHz`                     | IEEE 802.11b/g/n
+| **Channel**   | `2`                           | Operates at 2417 MHz
+
+
+
 
 
 
