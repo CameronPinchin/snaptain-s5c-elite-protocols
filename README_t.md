@@ -15,7 +15,7 @@ __NOTE(2)__: This section is intended to provide a centralized source of technic
 
 ## <p align='center'> Networking Overview </p>
 
-The drone initiates a hotspot network approximately 3 seconds after power-on under the name: **SNAPTAIN ELITE S5C A77D3E**. This network is unsecured and requires no password by default, as such anybody within a ~20 meter range of this drone will be able to connect to its network. There is a *minor* security layer added to be able to access the live video feed, but is easily emulated and would not be an issue for anyone who knows what they are doing.
+The drone initiates a hotspot network approximately 3 seconds after power-on under the name: **SNAPTAIN ELITE S5C A7D33E**. This network is unsecured and requires no password by default, as such anybody within a ~20 meter range of this drone will be able to connect to its network. There is a *minor* security layer added to be able to access the live video feed, but is easily emulated and would not be an issue for anyone who knows what they are doing.
 
 For normal operating conditions, if a device satifies two conditions, they will be able to view the live video feed streaming from the drone:  
 ```
@@ -51,10 +51,11 @@ The information regarding key network information required at this stage can be 
 
 | Parameter     | Value                         | Notes
 | :---          | :---                          | :---
-| **SSID**      | `SNAPTAIN ELITE S5C XXXXXX`   | This should be consistent across all models.
+| **SSID**      | `SNAPTAIN ELITE S5C A7D33E`   | This should be consistent across all models.
 | **Password**  | `NULL`                        | No password; you cannot set one either.
 | **RF Band**   | `2.4 GHz`                     | IEEE 802.11b/g/n
 | **Channel**   | `2`                           | Operates at 2417 MHz
+| **Static IP** | `172.19.10.1`                 | Identified by decompiling the SNAPTAIN FPV app.
 
 __NOTE(3)__: I have not observed the drone operating on a different channel other than 2, but have not verified that this is hardcoded. I will provide an amendment following further research.
 
