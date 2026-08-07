@@ -101,16 +101,16 @@ f0 bf 00 00 01 00 01 00 01 00 01 00 02 00 09 00
 00 00 00 00 00 00 00 00 00 00 
 ```
 
-The packets contain more than will be listed below, but most of it is redunant and was covered earlier in this document. This includes: Drone IP address, Gateway, and Subnet Mask.
+The packets contain more than will be listed below, but most of it is redunant and was covered earlier in this document. This includes: drone IP address, gateway address, and subnet mask.
 
 | Parameter                 | Value                         | Notes
 | :---                      | :---                          | :---
-| **MAC Address**           | `50:9B:94:A7:D3:3E`           | This should be consistent across all models.
-| **Firmware Version**      | `0.0.0 (build 0)`             | No information found on this; likely filler. 
+| **MAC Address**           | `50:9B:94:A7:D3:3E`           | --
+| **Firmware Version**      | `0.0.0 (build 0)`             | -- 
 | **Hardware Information**  | `FH8830_50-9B-94-A7-D3-3E`    | The SoC for the camera on the drone + MAC Address.
 | **TCP Port**              | `8866`                        | An open TCP port used by the network.
 
-The drone does not transmit data through this port unprompted. I could identify no data transmission to or from this port during initial tshark scans, nor could I capture any packets when listening on that specific port. This indicates the drone expects an inital 'hello' of some form, which marks the first stage of the primary handshake.
+The drone does not transmit data through this port unprompted. I could identify no data transmission to or from this port during initial tshark scans, nor could I capture any packets when listening on that specific port. This indicates the drone expects a prompting event, which marks the first stage of the primary handshake
 
 ### Primary Handshake | Stage One
 
