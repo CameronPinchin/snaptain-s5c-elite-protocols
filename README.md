@@ -156,6 +156,17 @@ So, I started looking for more references to the aesKey, userName, or password (
 
 It was recommended that I use *Ghidra* to deconstruct the shared object files. [Ghidra](https://www.nsa.gov/ghidra) is a free and open-source framework used to reverse engineer software developed by the NSA. It is able to translate machine code back into readable C/C++, among many other things. The goal of doing this is to identify the payload structure the drone expects, and what a message should look like. In theory, once I see this, I can begin emulating the handshake myself and encrypt the message with the AES key found earlier.
 
+This ended up working perfectly. From the libFHDEV_Net.so file, I was able to identify how the login is constructed in the packet. The main functions of interest in the library are:
+
+```
+FHDEV_NET_Init
+(paste pseudocode here)
+
+FHDEV_NET_Login
+(paste pseudocode here)
+```
+
+
 ### FH8830 SoC for Cameras
 
 The FH8830 SoC is commonly used by cheap, consumer-grade FPV drones and has likely been reverse engineered before. 

@@ -1,0 +1,299 @@
+undefined8 FHDEV_NET_Login(undefined8 param_1,undefined4 param_2,undefined8 param_3,undefined8 param_4,
+               undefined8 param_5)
+{
+  undefined8 uVar1;
+
+  if (g_pstDevManage != 0) {
+    uVar1 = DM_Login(g_pstDevManage,param_1,param_2,param_3,param_4,0,0,param_5);
+    return uVar1;
+  }
+  SetLastErrorPlatform(0x7d1);
+  return 0;
+}
+
+
+void * DM_Login(long param_1,char *param_2,undefined4 param_3,char *param_4,char *param_5,
+               undefined8 param_6,undefined4 param_7,long param_8)
+
+{
+  undefined4 uVar1;
+  int iVar2;
+  void *__ptr;
+  undefined8 uVar3;
+  long lVar4;
+  char *pcVar5;
+  long lVar6;
+  int local_106c;
+  char local_1068 [4104];
+
+  lVar6 = tpidr_el0;
+  lVar6 = *(long *)(lVar6 + 0x28);
+  local_106c = 0;
+  memset(local_1068,0,0x1000);
+  if ((((param_2 == (char *)0x0) || (param_4 == (char *)0x0)) || (*param_2 == '\0')) ||
+     (((param_5 == (char *)0x0 || (*param_4 == '\0')) || ((param_8 == 0 || (*param_5 == '\0')))))) {
+    SetLastErrorPlatform(0x7d4);
+  }
+  else {
+    uVar1 = TCPSocketCreate(param_2,param_3,param_6,param_7);
+    iVar2 = NC(0xff,uVar1,1,3,param_4,param_5,1,1,0,0,local_1068,&local_106c,0,g_dwRecvTimeOut,1);
+    if (iVar2 != 0) {
+      if (local_106c == 0) {
+LAB_00118c28:
+        __ptr = (void *)Dev62Create();
+        if (__ptr != (void *)0x0) {
+LAB_00118cf4:
+          *(undefined4 *)((long)__ptr + 4) = uVar1;
+          *(undefined8 *)((long)__ptr + 0x200) = *(undefined8 *)(param_1 + 0x40);
+          *(undefined8 *)((long)__ptr + 0x208) = *(undefined8 *)(param_1 + 0x48);
+          lVar4 = (**(code **)((long)__ptr + 0x248))
+                            (__ptr,param_2,param_3,param_4,param_5,param_6,param_7,param_8);
+          if (lVar4 != 0) {
+            lVar4 = *(long *)(param_1 + 8);
+            if (lVar4 == 0) {
+              lVar4 = THandleCreate();
+              *(long *)(param_1 + 8) = lVar4;
+            }
+            THandleAddData(lVar4,__ptr);
+            goto LAB_00118bd0;
+          }
+          SocketClose(uVar1);
+          free(__ptr);
+          goto LAB_00118bcc;
+        }
+        pcVar5 = "Dev62Create() fail\n";
+      }
+      else {
+        if (local_106c != 1) {
+LAB_00118cc4:
+          LogPlatformOut(2,"login ack packet is invalid\n");
+          SetLastErrorPlatform(0x7d5);
+          goto LAB_00118cdc;
+        }
+        if (local_1068[0] == '\b') goto LAB_00118c28;
+        if (local_1068[0] == '\x01') {
+          __ptr = (void *)Dev61Create();
+          if (__ptr != (void *)0x0) goto LAB_00118cf4;
+          pcVar5 = "Dev61Create() fail\n";
+        }
+        else if (local_1068[0] == '\t') {
+          __ptr = (void *)Dev83Create();
+          if (__ptr != (void *)0x0) goto LAB_00118cf4;
+          pcVar5 = "Dev83Create() fail\n";
+        }
+        else if (local_1068[0] == '\a') {
+          __ptr = (void *)Dev81Create();
+          if (__ptr != (void *)0x0) goto LAB_00118cf4;
+          pcVar5 = "Dev81Create() fail\n";
+        }
+        else if (local_1068[0] == '\v') {
+          __ptr = (void *)DevGENLCreate();
+          if (__ptr != (void *)0x0) goto LAB_00118cf4;
+          pcVar5 = "DevGENLCreate() fail\n";
+        }
+        else {
+          if (local_1068[0] != '\n') goto LAB_00118cc4;
+          __ptr = (void *)Dev63Create();
+          if (__ptr != (void *)0x0) goto LAB_00118cf4;
+          pcVar5 = "Dev63Create() fail\n";
+        }
+      }
+      LogPlatformOut(2,pcVar5);
+      SocketClose(uVar1);
+      goto LAB_00118bd0;
+    }
+    uVar3 = GetLastErrorPlatform();
+    LogPlatformOut(2,"login fail, %d\n",uVar3);
+LAB_00118cdc:
+    SocketClose(uVar1);
+  }
+LAB_00118bcc:
+  __ptr = (void *)0x0;
+LAB_00118bd0:
+  lVar4 = tpidr_el0;
+  if (*(long *)(lVar4 + 0x28) == lVar6) {
+    return __ptr;
+  }
+                    /* WARNING: Subroutine does not return */
+  __stack_chk_fail();
+}
+
+
+void NC(int param_1,int param_2,undefined4 param_3,uint param_4,char *param_5,char *param_6,
+       char param_7,byte param_8,undefined1 param_9,undefined1 param_10,void *param_11,int *param_12
+       ,undefined1 *param_13,undefined4 param_14,undefined1 param_15)
+
+{
+  long lVar1;
+  int iVar2;
+  undefined8 uVar3;
+  ulong uVar4;
+  ulong uVar5;
+  uint uVar6;
+  int iVar7;
+  undefined1 local_10c0;
+  byte local_10bf;
+  undefined1 local_10be;
+  char local_10bd;
+  byte local_10bc;
+  uint local_10bb;
+  char acStack_10b6 [32];
+  char acStack_1096 [36];
+  undefined1 local_1072;
+  ushort local_1071;
+  undefined1 local_106f;
+  undefined1 auStack_106e [4102];
+  long local_68;
+
+  lVar1 = tpidr_el0;
+  local_68 = *(long *)(lVar1 + 0x28);
+  if (0 < param_2) {
+    memset(&local_10c0,0,0x1052);
+    if ((param_4 & 1) != 0) {
+      switch(param_1) {
+      case 1:
+        local_10c0 = 0x61;
+        break;
+      case 2:
+      case 3:
+      case 4:
+      case 5:
+      case 6:
+        break;
+      case 7:
+        local_10c0 = 0x81;
+        break;
+      case 8:
+        local_10c0 = 0x62;
+        break;
+      case 9:
+        local_10c0 = 0x83;
+        break;
+      case 10:
+        local_10c0 = 99;
+        break;
+      default:
+        if (param_1 == 0xff) {
+          local_10c0 = 0;
+        }
+      }
+      local_10bf = g_ucHeadLen;
+      local_10be = param_9;
+      local_10bd = param_7;
+      local_10bc = param_8;
+      strcpy(acStack_10b6,param_5);
+      strcpy(acStack_1096,param_6);
+      local_1072 = 0;
+      if (param_13 != (undefined1 *)0x0) {
+        local_1072 = *param_13;
+      }
+      local_106f = param_10;
+      uVar6 = 1;
+      local_1071 = 1;
+      if (param_12 != (int *)0x0) {
+        iVar7 = *param_12;
+        uVar6 = iVar7 + 1;
+        local_1071 = (ushort)uVar6;
+        if ((param_11 != (void *)0x0) && (0 < iVar7)) {
+          memcpy(auStack_106e,param_11,(long)iVar7);
+        }
+      }
+      iVar7 = (uint)local_10bf + (uVar6 & 0xffff);
+      ConvertByteOrder(param_1,&local_10c0,iVar7);
+      uVar3 = TCPSocketSend(param_2,&local_10c0,iVar7,param_3);
+      if ((int)uVar3 == 0) goto switchD_00183f0c_caseD_2;
+    }
+    if (((param_4 & 0xff) >> 1 & 1) == 0) {
+      uVar3 = 1;
+      goto switchD_00183f0c_caseD_2;
+    }
+    iVar7 = 0;
+    do {
+      iVar2 = TCPSocketRecv(param_2,&local_10c0,g_iNetMsgLen,param_14,param_3,param_15);
+      if (iVar2 == 0) {
+        if (param_13 != (undefined1 *)0x0) {
+          uVar3 = 0;
+          *param_13 = 0xff;
+          goto switchD_00183f0c_caseD_2;
+        }
+        break;
+      }
+      if (iVar2 < 0) break;
+      if ((local_10bd == param_7) && ((uint)local_10bc == param_8 + 1)) {
+        ConvertByteOrder(param_1,&local_10c0,iVar2);
+        if ((param_11 != (void *)0x0) && (1 < (ulong)local_1071)) {
+          memcpy(param_11,auStack_106e,(ulong)local_1071 - 1);
+        }
+        if (param_12 != (int *)0x0) {
+          if (local_1071 < 2) {
+            *param_12 = 0;
+          }
+          else {
+            *param_12 = local_1071 - 1;
+          }
+        }
+        if (param_13 != (undefined1 *)0x0) {
+          *param_13 = local_1072;
+        }
+        uVar5 = (ulong)(int)local_10bb;
+        if (local_10bb == 0) {
+          uVar3 = 1;
+          goto switchD_00183f0c_caseD_2;
+        }
+        uVar3 = 0;
+        switch(param_1) {
+        case 1:
+          uVar4 = 0x19;
+          if ((local_10bb != 0x15) && (uVar4 = uVar5, local_10bb == 0x14)) {
+            uVar4 = 0x14;
+          }
+          break;
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+          goto switchD_00183f0c_caseD_2;
+        case 7:
+          uVar4 = 0x15;
+          if ((local_10bb != 0x14) && (uVar4 = uVar5, local_10bb == 0x15)) {
+            uVar4 = 0x14;
+          }
+          break;
+        case 8:
+          uVar4 = 0x15;
+          if ((local_10bb != 0x14) && (uVar4 = uVar5, local_10bb == 0x15)) {
+            uVar4 = 0x14;
+          }
+          break;
+        case 9:
+          uVar4 = 0x15;
+          if ((local_10bb != 0x14) && (uVar4 = uVar5, local_10bb == 0x15)) {
+            uVar4 = 0x14;
+          }
+          break;
+        case 10:
+          uVar4 = 0x15;
+          if ((local_10bb != 0x14) && (uVar4 = uVar5, local_10bb == 0x15)) {
+            uVar4 = 0x14;
+          }
+          break;
+        default:
+          if (param_1 != 0xff) goto switchD_00183f0c_caseD_2;
+          uVar4 = (ulong)local_10bb;
+        }
+        SetLastErrorPlatform(uVar4);
+        break;
+      }
+      iVar7 = iVar7 + 1;
+    } while (iVar7 < 10);
+  }
+  uVar3 = 0;
+switchD_00183f0c_caseD_2:
+  lVar1 = tpidr_el0;
+  if (*(long *)(lVar1 + 0x28) != local_68) {
+                    /* WARNING: Subroutine does not return */
+    __stack_chk_fail(uVar3);
+  }
+  return;
+}

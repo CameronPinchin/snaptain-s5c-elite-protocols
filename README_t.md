@@ -112,7 +112,39 @@ The packets contain more than will be listed below, but most of it is redunant a
 
 The drone does not transmit data through this port unprompted. I could identify no data transmission to or from this port during initial tshark scans, nor could I capture any packets when listening on that specific port. This indicates the drone expects a prompting event, which marks the first stage of the primary handshake
 
-### Primary Handshake | Stage One
+### Primary Handshake | Login Packet
+
+This was the extent of the useful information gathered from looking at the data exchanges between the drone and a connected device. The next step involved downloading the Android version of the SNAPTAIN FPV app and looking through the source code. Using some of the information found earlier (the TCP port, in particular), identified critical information used in the authentication process: 
+
+| Parameter                 | Value                         | Notes
+| :---                      | :---                          | :---
+| **LOGIN_TWICE**           | `false`                       | Boolean value. Set to false, doesn't seem to change.
+| **userName**              | `guanxukeji`                  | Primary username used in the authentication process. 
+| **password**              | `gxrdw60`                     | Primary password used in the authentication process.
+| **userName2**             | `guanxukeji2`                 | Optional username; required if LOGIN_TWICE is true. 
+| **password2**             | `gxrdw602`                    | Optional password; required if LOGIN_TWICE is true. 
+| **AES Key**               | `guanxukj@fh8620.`            | AES-128 encryption key used to encrypt video transmission data.
+| **Libraries**             | `libFHDEV_NET.so`             | Shared object file identified in the apps source code, specific to the SoC.
+
+The libFHDEV_NET.so shared-object file was decompiled using [Ghidra](https://www.nsa.gov/ghidra) and provided the packet architecture the drone expects to receive. The pseudocode for critical functions can be found in the **pseudocode** directory in this repository, with the primary functions of interest being: FHDEV_NET_Login, DM_Login, NC, and TCPSocketSend.  
+
+The packets are sent with an 82-byte header with a 1-byte payload, bringing the packet size to 83 bytes. The structure identified in the NC function decompiled in Ghidra looks like so:  
+
+| Parameter                             | Value                             | Notes
+| :---                                  | :---                  | :---
+| **undefined1 local_10c0**             | `device_type`         | This is set to 0x00.
+| **byte local_10bf**                   | `g_ucHeadLen`         | This is the header length. Constant; set to 0x52 == 82.
+| **undefined1 local_10be**             | `param_9 (a9)`        | Passed as 0. Purpose is unclear.
+| **char local_10bd**                   | `cmd_id`              | The command being issued. 0x01 == login command. 
+| **byte local_10bc**                   | `seq_id`              | Sequence ID for the packets. 0x01 is the first packet, the response is seq_id+1.
+| **byte local_10bb**                   | `error_code`          | Zero filled with a memset call. Holds error codes.
+| **char acStack_10b6[32]**             | `username`            | strcpy'd from param_5 = "guanxukeji".
+| **char acStack_1096[36]**             | `password`            | strcpy'd from param_6 = "gxrdw60".
+| **undefined1 local_1072**             | `extra_flag`          | Function unknown, but always 0 if not null.
+| **ushort     local_1071**             | `length`              | Set to payload_length + 1; for login this is 1.
+| **undefined1 local_106f**             | `param_10 (a10)`      | Passed as 0 for login.
+| **undefined1 auStack_106e[4102]**     | `payload buffer`      | The buffer for the actual payload data.
+
 
 
 
