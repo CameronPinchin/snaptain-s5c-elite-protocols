@@ -128,12 +128,12 @@ This was the extent of the useful information gathered from looking at the data 
 
 The libFHDEV_NET.so shared-object file was decompiled using [Ghidra](https://www.nsa.gov/ghidra) and provided the packet architecture the drone expects to receive. The pseudocode for critical functions can be found in the **pseudocode** directory in this repository, with the primary functions of interest being: FHDEV_NET_Login, DM_Login, NC, and TCPSocketSend.  
 
-The packets are sent with an 82-byte header with a 1-byte payload, bringing the packet size to 83 bytes. The structure identified in the NC function decompiled in Ghidra looks like so:  
+The packets are sent with an 81-byte header with a 1-byte payload, bringing the packet size to 82 bytes. The structure identified in the NC function decompiled in Ghidra looks like so:  
 
 | Parameter                             | Value                             | Notes
 | :---                                  | :---                  | :---
 | **undefined1 local_10c0**             | `device_type`         | This is set to 0x00.
-| **byte local_10bf**                   | `g_ucHeadLen`         | This is the header length. Constant; set to 0x52 == 82.
+| **byte local_10bf**                   | `g_ucHeadLen`         | This is the header length. Constant; set to 0x51 == 81.
 | **undefined1 local_10be**             | `param_9 (a9)`        | Passed as 0. Purpose is unclear.
 | **char local_10bd**                   | `cmd_id`              | The command being issued. 0x01 == login command. 
 | **byte local_10bc**                   | `seq_id`              | Sequence ID for the packets. 0x01 is the first packet, the response is seq_id+1.
@@ -149,16 +149,17 @@ For a cleaner overview of the packet architecture, it can be seen below in the s
 
 ```
 Offset  0  (1 byte)  : device_type     - 0x00 for model_id=0xff
-Offset  1  (1 byte)  : g_ucHeadLen     - header length constant 
+Offset  1  (1 byte)  : g_ucHeadLen     - 0x51 = 81
 Offset  2  (1 byte)  : a9              - 0x00
 Offset  3  (1 byte)  : cmd_id          - 0x01
 Offset  4  (1 byte)  : seq_id          - 0x01
 Offset  5  (4 bytes) : error_code      - 0x00000000
-Offset  9  (1 byte)  : padding         - 0x00 
+Offset  9  (1 byte)  : padding         - 0x00
 Offset 10  (32 bytes): username        - "guanxukeji\0" + zeros
 Offset 42  (36 bytes): password        - "gxrdw60\0" + zeros
 Offset 78  (1 byte)  : flag            - 0x00
 Offset 79  (2 bytes) : payload_len+1   - 0x0001 (LE)
+---------------------------------------------------------------- [End of 81-byte header]
 Offset 81  (1 byte)  : a10             - 0x00
 Offset 82  (+)       : payload         - 1 zero byte for login
 ```
@@ -167,9 +168,20 @@ Offset 82  (+)       : payload         - 1 zero byte for login
 
 __NOTE(3)__: Encrpytion in general is an area I am unfamiliar with. If anything in this section is lacking, please raise an issue and I will review it.
 
-The psuedocode obtained from the libFHDEV_NET.so file revealed an AES Encryption step for the packets. The function AESSocketSend identified the type of AES encryption as **AES-128-ECB**. 
+The psuedocode obtained from the libFHDEV_NET.so file revealed an AES Encryption step for the packets. The function AESSocketSend identified the type of AES encryption as **AES-128-ECB** simply due to the encryption loop visible in the function:  
+```
+    do {
+        aes_enc_blk(plaintext + offset, ciphertext + offset, key);
+        offset += 16;
+    } while (offset < plaintext_len) 
+```
 
-
-
+The AES encryption method requires the input to be a multiple of 16 bytes. The plaintext for our packet is 82 bytes; so the nearest 16-byte multiple is 96 which would require 14-bytes of zero-padding, making our unencrypted plaintext 96 bytes (82 bytes of data, 14 bytes of padding). The AESSocketSend function encrypts this plaintext, and then wraps the ciphertext in a 10-byte framing header. The framing header layout can be seen below:  
+```
+Bytes 0,1   : 0x49,0x54     - ASCII "IT" magic number
+Bytes 2,5   : iVar3         - LE int32, value = (last_block_offset + 20)
+Bytes 6,9   : param_3       - LE int32, original plaintext length
+Bytes 10,n  : ciphertext    - The 96-byte AES-ECB encrypted data.
+```
 
 
