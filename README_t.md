@@ -145,13 +145,29 @@ The packets are sent with an 82-byte header with a 1-byte payload, bringing the 
 | **undefined1 local_106f**             | `param_10 (a10)`      | Passed as 0 for login.
 | **undefined1 auStack_106e[4102]**     | `payload buffer`      | The buffer for the actual payload data.
 
+For a cleaner overview of the packet architecture, it can be seen below in the same ordering:
 
+```
+Offset  0  (1 byte)  : device_type     - 0x00 for model_id=0xff
+Offset  1  (1 byte)  : g_ucHeadLen     - header length constant 
+Offset  2  (1 byte)  : a9              - 0x00
+Offset  3  (1 byte)  : cmd_id          - 0x01
+Offset  4  (1 byte)  : seq_id          - 0x01
+Offset  5  (4 bytes) : error_code      - 0x00000000
+Offset  9  (1 byte)  : padding         - 0x00 
+Offset 10  (32 bytes): username        - "guanxukeji\0" + zeros
+Offset 42  (36 bytes): password        - "gxrdw60\0" + zeros
+Offset 78  (1 byte)  : flag            - 0x00
+Offset 79  (2 bytes) : payload_len+1   - 0x0001 (LE)
+Offset 81  (1 byte)  : a10             - 0x00
+Offset 82  (+)       : payload         - 1 zero byte for login
+```
 
+### Primary Handshake | Login Packet, AES Encryption
 
+__NOTE(3)__: Encrpytion in general is an area I am unfamiliar with. If anything in this section is lacking, please raise an issue and I will review it.
 
-
-
-
+The psuedocode obtained from the libFHDEV_NET.so file revealed an AES Encryption step for the packets. The function AESSocketSend identified the type of AES encryption as **AES-128-ECB**. 
 
 
 
