@@ -221,38 +221,3 @@ Response seq_id:        0x02
 Response error_code:    0x0000
 Payload byte:           0x09
 ```
-
-(ADD MORE HERE!!)
-
-Protocol diagram for the login process:
-
-```
-                    S5C Elite
-                       │
-                 Wi-Fi AP starts
-                       │
-                       ▼
-              ┌─────────────────┐
-              │  UDP multicast  │
-              │    discovery    │
-              └────────┬────────┘
-                       │
-                 TCP: 8866
-                       │
-                       ▼
-              ┌─────────────────┐
-              │ Login plaintext │
-              │   81 + 1 bytes  │
-              └────────┬────────┘
-                       │
-                       ▼
-              ┌─────────────────┐
-              │   AES-128-ECB   │
-              │   + "IT" frame  │
-              └────────┬────────┘
-                       │
-                       ▼
-              ┌─────────────────┐
-              │ Login response  │
-              └─────────────────┘
-```
