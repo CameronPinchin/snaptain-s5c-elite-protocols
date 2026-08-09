@@ -1,52 +1,88 @@
-# Snaptain Elite S5C Drone
-*Cameron Pinchin*
+# <p align='center' >Snaptain S5C Elite Reverse Engineering  </p>
 
-The Snaptain Elite S5C is a consumer drone capable of operating at 80 - 100 meters (likely in perfect conditions), approximately ~10-15 minutes.
+# Table of Contents
 
-## Drone - Technical Notes
+* Technical Notes
+* Introduction
+* Tooling Used
+* Resources
 
-Establishing a programmatic connection to the drone has been the most challenging portion. My assumption was that the video is based on a UDP connection and just continually transmits datagrams on a specific port.
+__NOTE(1)__: If you have any questions or need further clarification, you are welcome to create an issue and ask.
 
-The Snaptain S5C base model has been reverse engineered and the communication protocol is known. The process is as follows: 
-    
-    1. The TCP component involves establishing four separate TCP connections to the drone over **port 8888** with a specific string attached.
-    
-    2. This TCP handshake is accepted which opens up the UDP stream for connections on **port 9125** . 
-    
-I tried replicating this on the **Snaptain Elite S5C** which didn't end up working. It appears that the TCP connections on port 8888 are not even open to begin with, leading me to believe they are on a different port or the process differs entirely from the non-Elite model. 
+# Technical Notes
 
-## Reverse Engineering the Snaptain Elite S5C
+__NOTE(2)__: This section is intended to provide a centralized source of technical information regarding the networking architecture for the Snaptain S5C Elite drone. 
 
-The plan is to use my phone to connect to the drone using the Snaptain FPV app. I would then use my PC to sniff the packets being sent back and forth to; identify the ports, and identify potential patterns in the communication.
+## <p align='center'> Networking Overview </p>
 
-This has yielded interesting results so far, having discovered **port 51167** has packets being sent over it. 
+The drone initiates a hotspot network approximately 3 seconds after power-on under the name: **SNAPTAIN ELITE S5C A7D33E**. This network is unsecured and requires no password by default, as such anybody within a ~20 meter range of this drone will be able to connect to its network. There is a *minor* security layer added to be able to access the live video feed, but is easily emulated and would not be an issue for anyone who knows what they are doing.
 
-I have been using *tshark*, a cli-based version of WireShark to capture information about the transmissions between my phone and the drone. 
-
-The drone seemingly struggles with multiple connections at once, so I switched the wifi network on my PC to monitor mode, and set it to listen on channel 2 for activity. I then used tshark:  
+For normal operating conditions, if a device satifies two conditions, they will be able to view the live video feed streaming from the drone:  
 ```
-tshark -i wlan0 -w drone_capture.pcapng
+    (1): An external device must be connected to the drone's network.  
+    (2): The external device must have the *SNAPTAIN FPV* app installed and opened following a successful initial connection.
 ```
-I let this run for ~15 seconds. While it was running, I established a connection to the drones hotspot, waited a couple seconds, and then opened the **SNAPTAIN FPV** app 
+For a dedicated individual, they would only require the first condition to be satisfied to gain access to the live video feed (e.g., they need to be in close proximity to the drone in order to access its network).
 
-This enabled me to view to separate processes: (1) the initial connection of a phone to the drones network, and (2) the network activity when the **SNAPTAIN FPV** app is opened and the live feed is established. 
+This repository intends to document the steps I took to reverse engineer the networking protocols for this drone, and provide a specifications sheet as a quick reference guide if anyone requires this information.
 
-For (1), the main question is: does any visible handshake occur between the drones network and the phone?   
-For (2), the main question is: does a secondary handshake occur that is required for video data to be transmitted?  
+## *<p align='center'> Networking Overview | Initial Handshake </p>*
 
-### Overview of Network Activitiy
+The initial handshake describes the environment after the drone has been powered on, but no devices have connected to it yet.
 
-The capture created by *tshark* immediately revealed interesting information and confirmed that I am observing activity between my phone and the drones network. There was a considerable spike in the number of frames captured as soon as my phone connected, with the number of packets being sent numbering around ~100 per second. 
+Architecture of Initial Handshake:
+```
+1. The drone acting as an Access Point (AP) begins transmitting beacon frames on radio frequency (RF) 2.4 GHz band on channel 2.
 
-The second notable spike in activity was after I opened the app and established a live video feed. This showed a sharp rise in packets being transmitted per second, peaking around ~500 packets per second. For reference, you can see a graphical representation of this activity below: 
+2. The device transmits a probe request to identify the network; the drone responds with a probe response.
 
-#### Network Activity: Drone-to-Phone Connection
-![Network Activity: Drone-to-Phone Connection](https://i.imgur.com/RC8Ot0n.png)
+3. The device transmits an authentication request to the network; the drone responds with an authentication response. 
 
-Further observations from these captures yielded increasingly diminishing returns. Not much usable information could be obtained from it, so I switched to a separate method. From my PC, I created a small program to try to capture the payload by joining the multicast group I identified earlier. 
+4. The device transmits an association request to the network; the drone responds with an association response. 
+```
 
-The drone transmits multicast beacons to: **[239.1.2.255:51167]** every two seconds without any prompting event. The payload is 234 bytes long, so the program just captures this packet and performs a hex dump to the terminal. This produced the following output: 
+The network does not require a password by default. From preliminary research, it appears you also cannot modify this yourself to improve security. This means, after the association exchange (4) is complete, the device has connected to the network. 
 
+At this stage, any data being transmitted to and from the network is unencrypted and broadcasted in plaintext. This data can be intercepted by individuals in close proximity and the means to do so.
+
+### Initial Handshake | Key Network Information 
+
+The information regarding key network information required at this stage can be found in the table below:
+
+| Parameter     | Value                         | Notes
+| :---          | :---                          | :---
+| **SSID**      | `SNAPTAIN ELITE S5C A7D33E`   | This should be consistent across all models.
+| **Password**  | `NULL`                        | No password; you cannot set one either.
+| **RF Band**   | `2.4 GHz`                     | IEEE 802.11b/g/n
+| **Channel**   | `2`                           | Operates at 2417 MHz
+| **Static IP** | `172.19.10.1`                 | Identified by decompiling the SNAPTAIN FPV app.
+
+__NOTE(3)__: I have not observed the drone operating on a different channel other than 2, but have not verified that this is hardcoded. I will provide an amendment following further research.
+
+## *<p align='center'> Networking Overview | Primary Handshake </p>*
+
+Following a successful initial handshake, the device has established a successful connection to the drone's network. The 'primary' handshake regards establishing a connection to the live video streaming from the drone. It is only considered 'primary' for the purposes of differentiating the initial network connection and establishing a live video connection.
+
+This handshake has an added layer of security, but that layer is rather thin and took me a few hours to bypass it.  
+
+For an average users, the process for establishing a live video feed from the drone is as follows:
+```
+1. From the users phone, connect to the drone's WiFi network.
+2. Start the SNAPTAIN FPV app after a successful connection.
+3. Select the 'FUNCTION' button in the bottom-right corner and a live video stream appears.
+```
+
+### Primary Handshake | Technical Overview
+
+To emulate this process, I connected a PC to the network and leveraged *tshark* to reveal information about communications between the devices. This provided additional key information:  
+
+1. The drone transmits 234 byte UDP packets to a multicast group with the destination port 51167 on a two second interval. 
+
+2. These packets are transmitted without any identifiable prompting event, and can be captured by any device capable of joining that multicast group. 
+
+3. The packets are unencrypted.  
+
+The packets contain useful information for decoding the networking process. Here is a sample packet collected:  
 ```
 f0 bf 00 00 01 00 01 00 01 00 01 00 02 00 09 00  
 00 00 d4 00 00 00 35 30 2d 39 42 2d 39 34 2d 41  
@@ -65,109 +101,135 @@ f0 bf 00 00 01 00 01 00 01 00 01 00 02 00 09 00
 00 00 00 00 00 00 00 00 00 00 
 ```
 
-#### Packet Breakdown
+The packets contain more than will be listed below, but most of it is redunant and was covered earlier in this document. This includes: drone IP address, gateway address, and subnet mask.
 
-The first 18 bytes are related to the ethernet protocol and control structures for the packet. Useful, but not super interesting.
-```
-f0 bf 00 00 01 00 01 00 01 00 01 00 02 00 09 00 00 00 d4 00 00 00
-```
-The next 17 bytes identify the drone's MAC address: 
-```
-35 30 2d 39 42 2d 39 34 2d 41 37 2d 44 33 2d 33 45 == 50-9B-94-A7-D3-3E
-```
-The next 15 bytes identify the drone's IP address:
-```
-31 37 32 2e 31 39 2e 31 30 2e 31 == 172.19.10.1
-```
-The next 15 bytes identify the subnet mask:
-```
-32 35 35 2e 32 35 35 2e 30 2e 30 == 255.255.0.0
-```
-The next 15 bytes identify the gateway:
-```
-31 37 32 2e 31 39 2e 31 30 2e 31 == 172.19.10.1
-```
-The next 2 bytes seem to identify a port, potentially the video port:
-```
-a2 22 == 0x22A2 == 8866
-```
-*This is unconfirmed, but lines up perfectly with a little-endian 16-bit unsigned integer.*  
+| Parameter                 | Value                         | Notes
+| :---                      | :---                          | :---
+| **MAC Address**           | `50:9B:94:A7:D3:3E`           | --
+| **Firmware Version**      | `0.0.0 (build 0)`             | -- 
+| **Hardware Information**  | `FH8830_50-9B-94-A7-D3-3E`    | The SoC for the camera on the drone + MAC Address.
+| **TCP Port**              | `8866`                        | An open TCP port used by the network.
 
-The next 15 bytes identify a build version, highly likely to be the firmware version:
-```
-30 2e 30 2e 30 20 28 62 75 69 6c 64 20 30 29 == "0.0.0 (build 0)"
-```
-The final 23 bytes identify hardware information:
-```
-46 48 38 38 33 30 5f 35 30 2d 39 42 2d 39 34 2d 41 37 2d 44 33 2d 33 45 == "FH8830_50-9B-94-A7-D3-3E"
-```
+The drone does not transmit data through this port unprompted. I could identify no data transmission to or from this port during initial tshark scans, nor could I capture any packets when listening on that specific port. This indicates the drone expects a prompting event, which marks the first stage of the primary handshake
 
-This was a bit of a breakthrough, as this provided two key pieces of information. 
+### Primary Handshake | Login Packet
 
-    1. The port 8866 is being used, potentially for video transmission. 
-    2. The hardware information revealed the onboard camera SoC, which was unknown before. 
-    
-### Port 8866
+This was the extent of the useful information gathered from looking at the data exchanges between the drone and a connected device. The next step involved downloading the Android version of the SNAPTAIN FPV app and looking through the source code. Using some of the information found earlier (the TCP port, in particular), identified critical information used in the authentication process: 
 
-Identifying this port was crucial for the next steps. I ran another program designed to establish a TCP connection to the drone on port 8866, which was successful and proved it was infact open. I then listened for ~3 seconds, and didn't receive any data. This indicates the drone is waiting for a message to proceed rather than emitting anything continually.
+| Parameter                 | Value                         | Notes
+| :---                      | :---                          | :---
+| **LOGIN_TWICE**           | `false`                       | Boolean value. Set to false, doesn't seem to change.
+| **userName**              | `guanxukeji`                  | Primary username used in the authentication process. 
+| **password**              | `gxrdw60`                     | Primary password used in the authentication process.
+| **userName2**             | `guanxukeji2`                 | Optional username; required if LOGIN_TWICE is true. 
+| **password2**             | `gxrdw602`                    | Optional password; required if LOGIN_TWICE is true. 
+| **AES Key**               | `guanxukj@fh8620.`            | AES-128 encryption key used to encrypt transmission data.
+| **Libraries**             | `libFHDEV_NET.so`             | Shared object file identified in the apps source code, specific to the SoC.
 
-So, the structure of each command needs to be identified prior to be able to get the drone to respond. The Android app can be downloaded and converted into a APK file with *jadx* so you can see the source. 
+The libFHDEV_NET.so shared-object file was decompiled using [Ghidra](https://www.nsa.gov/ghidra) and provided the packet architecture the drone expects to receive. The pseudocode for critical functions can be found in the **pseudocode** directory in this repository, with the primary functions of interest being: FHDEV_NET_Login, DM_Login, NC, and TCPSocketSend.  
 
-I then searched through the files: 
-```
-grep -r "8866" snaptain_era_src/
-```
-This revealed a file that specifically referenced this port (FHDevices.java), where you can find other information about the networking process:
-```
-    public static boolean LOGIN_TWICE = false;
-    public static boolean OPEN_LOG = false;
-    protected static final String TAG = "FHDevices";
-    private volatile Pointer userID;
-    private final String deviceFlag = "fh?";
-    public volatile String firmwareFlag = "0000-00-00?";
-    private volatile boolean isInitDevices = false;
-    private volatile String devicesIP = "172.19.10.1";
-    private volatile int port = 8866;
-    private volatile int rxtxTransMode = 0;
-    private volatile String userName = "guanxukeji";
-    private volatile String password = "gxrdw60";
-    private volatile String aesKey = "guanxukj@fh8620.";
-    private final String userName2 = "guanxukeji2";
-    private final String password2 = "gxrdw602";
-    private volatile int baudRate = 115200;
-```
+The packets are sent with an 81-byte header with a 1-byte payload, bringing the packet size to 82 bytes. The structure identified in the NC function decompiled in Ghidra looks like so:  
 
-This identifies and confirms key aspects of the communication process. One, the drone expects a login as a form of authentication. This was the handshake I was searching for earlier, now we can emulate the handshake. Two, the drone expects a login, but seemingly sexpects one twice; potentially one to initiate a network connection, and another for the video stream. Three, there is an AES key that is used to encrypt the data frames. I couldn't view them earlier, this would be why. 
+| Parameter                             | Value                             | Notes
+| :---                                  | :---                  | :---
+| **undefined1 local_10c0**             | `device_type`         | This is set to 0x00.
+| **byte local_10bf**                   | `g_ucHeadLen`         | This is the header length. Constant; set to 0x51 == 81.
+| **undefined1 local_10be**             | `param_9 (a9)`        | Passed as 0. Purpose is unclear.
+| **char local_10bd**                   | `cmd_id`              | The command being issued. 0x01 == login command. 
+| **byte local_10bc**                   | `seq_id`              | Sequence ID for the packets. 0x01 is the first packet, the response is seq_id+1.
+| **byte local_10bb**                   | `error_code`          | Zero filled with a memset call. Holds error codes.
+| **char acStack_10b6[32]**             | `username`            | strcpy'd from param_5 = "guanxukeji".
+| **char acStack_1096[36]**             | `password`            | strcpy'd from param_6 = "gxrdw60".
+| **undefined1 local_1072**             | `extra_flag`          | Function unknown, but always 0 if not null.
+| **ushort     local_1071**             | `length`              | Set to payload_length + 1; for login this is 1.
+| **undefined1 local_106f**             | `param_10 (a10)`      | Passed as 0 for login.
+| **undefined1 auStack_106e[4102]**     | `payload buffer`      | The buffer for the actual payload data.
 
-The *deviceFlag = "fh?" and TAG = "FHDevices"* portions also align with device flags for Fullhan Microelectronics, which manufacture the FH8830 SoC. 
-
-After reading through the FHDevices.java file, along with a few others that appeared in the search, it seems that the video stream relies on Live555 which is an open-source RTSP streaming library. 
-
-The Live555 seemingly uses URLs, which was revealed by a Config.java file found within the source:
-```
-this.rtspClient.open("rtsp://" + this.jrDevices.getDevicesIP() + ":" + this.jrDevices.getRtspPort() + "/webcam", ...)
-...
-SERVER_PORT = 7070
-```
-
-I tried connecting using ffplay, which didn't get anywhere. The connection was refused immediately. I then tried with the TCP (8866) port, which successfully connected, but didn't provide a video output. This was to be expected, the source files reveal a boolean variable that determines if the video is transmitted over UDP or TCP. 
-
-So, I started looking for more references to the aesKey, userName, or password ("guanxukj@fh8620", "guanxukeji", "gxrdw60") which lead me to various .so files, with libFHDEV_Net.so being of particular interest. It contained a call with the handle FHDEV_NET_Login, and also another thing to research. 
-
-It was recommended that I use *Ghidra* to deconstruct the shared object files. [Ghidra](https://www.nsa.gov/ghidra) is a free and open-source framework used to reverse engineer software developed by the NSA. It is able to translate machine code back into readable C/C++, among many other things. The goal of doing this is to identify the payload structure the drone expects, and what a message should look like. In theory, once I see this, I can begin emulating the handshake myself and encrypt the message with the AES key found earlier.
-
-This ended up working perfectly. From the libFHDEV_Net.so file, I was able to identify how the login is constructed in the packet. The main functions of interest in the library are:
+For a cleaner overview of the packet architecture, it can be seen below in the same ordering:
 
 ```
-FHDEV_NET_Init
-(paste pseudocode here)
+Offset  0  (1 byte)  : device_type     - 0x00 for model_id=0xff
+Offset  1  (1 byte)  : g_ucHeadLen     - 0x51 = 81
+Offset  2  (1 byte)  : a9              - 0x00
+Offset  3  (1 byte)  : cmd_id          - 0x01
+Offset  4  (1 byte)  : seq_id          - 0x01
+Offset  5  (4 bytes) : error_code      - 0x00000000
+Offset  9  (1 byte)  : padding         - 0x00
+Offset 10  (32 bytes): username        - "guanxukeji\0" + zeros
+Offset 42  (36 bytes): password        - "gxrdw60\0" + zeros
+Offset 78  (1 byte)  : flag            - 0x00
+Offset 79  (2 bytes) : payload_len+1   - 0x0001 (LE)
+---------------------------------------------------------------- [End of 81-byte header]
+Offset 81  (1 byte)  : a10             - 0x00
+Offset 82  (+)       : payload         - 1 zero byte for login
+```
 
-FHDEV_NET_Login
-(paste pseudocode here)
+### Primary Handshake | Login Packet, AES Encryption
+
+__NOTE(4)__: Encrpytion in general is an area I am unfamiliar with. If anything in this section is lacking, please raise an issue and I will review it.
+
+The psuedocode obtained from the libFHDEV_NET.so file revealed an AES Encryption step for the packets. The function AESSocketSend identified the type of AES encryption as **AES-128-ECB** simply due to the encryption loop visible in the function:  
+```
+    do {
+        aes_enc_blk(plaintext + offset, ciphertext + offset, key);
+        offset += 16;
+    } while (offset < plaintext_len) 
+```
+
+The AES encryption method requires the input to be a multiple of 16 bytes. The plaintext for our packet is 82 bytes; so the nearest 16-byte multiple is 96 which would require 14-bytes of zero-padding, making our unencrypted plaintext 96 bytes (82 bytes of data, 14 bytes of padding). The AESSocketSend function encrypts this plaintext, and then wraps the ciphertext in a 10-byte framing header. The framing header layout can be seen below:  
+```
+Bytes 0,1   : 0x49,0x54     - ASCII "IT" magic number
+Bytes 2,5   : iVar3         - LE int32, value = (last_block_offset + 20)
+Bytes 6,9   : param_3       - LE int32, original plaintext length
+Bytes 10,n  : ciphertext    - The 96-byte AES-ECB encrypted data.
+```
+In total, a 106 byte packet is sent following the AES encryption layer and framing header. This command structure has been verified and an example exchange can be seen below, with the source code for the tool using found in the *tooling* directory.
+
+```
+[SUCCESS] Successfully connected to 172.19.10.0:8866
+Wire packet (106 bytes):
+49 54 64 00 00 00 53 00 00 00 bb b2 99 39 25 b2 
+a4 c3 dc 01 d8 b1 b5 11 5b 98 92 db 3e 6a fc 10 
+50 2d 79 80 0c a1 a5 e5 ba d4 aa 2d 95 15 81 b4 
+ab 82 2f 3f db d0 07 38 a6 2f 8a 31 44 a7 32 2c 
+11 dc 24 5d e0 17 f9 14 4c cc 9a a3 5b 13 14 7e 
+2e 76 f8 1e 22 c1 70 5b b1 27 a5 0b 32 60 d3 c0 
+f8 00 db d5 b7 7b 51 de 89 13 
+
+Login packet sent
+
+Response (106 bytes):
+49 54 64 00 00 00 53 00 00 00 b6 73 09 27 1c f5 
+ce 88 fc 78 71 39 69 f3 97 7d a5 0b 32 60 d3 c0 
+f8 00 db d5 b7 7b 51 de 89 13 a5 0b 32 60 d3 c0 
+f8 00 db d5 b7 7b 51 de 89 13 a5 0b 32 60 d3 c0 
+f8 00 db d5 b7 7b 51 de 89 13 36 ab 51 9f 82 4a 
+9c b3 44 a8 67 ef 57 37 be 8f 49 87 07 2b 74 82 
+e5 92 41 b1 f0 2d 5f fa 3b b5 
+
+Decrypted response (83 bytes):
+00 00 00 01 02 00 00 00 00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 
+00 00 09 
+
+Device type byte:       0x00
+Response cmd_id:        0x01
+Response seq_id:        0x02
+Response error_code:    0x0000
+Payload byte:           0x09
 ```
 
 
-### FH8830 SoC for Cameras
 
-The FH8830 SoC is commonly used by cheap, consumer-grade FPV drones and has likely been reverse engineered before. 
+
+
+
+
+
+
+
+
 
