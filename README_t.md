@@ -123,7 +123,7 @@ This was the extent of the useful information gathered from looking at the data 
 | **password**              | `gxrdw60`                     | Primary password used in the authentication process.
 | **userName2**             | `guanxukeji2`                 | Optional username; required if LOGIN_TWICE is true. 
 | **password2**             | `gxrdw602`                    | Optional password; required if LOGIN_TWICE is true. 
-| **AES Key**               | `guanxukj@fh8620.`            | AES-128 encryption key used to encrypt video transmission data.
+| **AES Key**               | `guanxukj@fh8620.`            | AES-128 encryption key used to encrypt transmission data.
 | **Libraries**             | `libFHDEV_NET.so`             | Shared object file identified in the apps source code, specific to the SoC.
 
 The libFHDEV_NET.so shared-object file was decompiled using [Ghidra](https://www.nsa.gov/ghidra) and provided the packet architecture the drone expects to receive. The pseudocode for critical functions can be found in the **pseudocode** directory in this repository, with the primary functions of interest being: FHDEV_NET_Login, DM_Login, NC, and TCPSocketSend.  
@@ -166,7 +166,7 @@ Offset 82  (+)       : payload         - 1 zero byte for login
 
 ### Primary Handshake | Login Packet, AES Encryption
 
-__NOTE(3)__: Encrpytion in general is an area I am unfamiliar with. If anything in this section is lacking, please raise an issue and I will review it.
+__NOTE(4)__: Encrpytion in general is an area I am unfamiliar with. If anything in this section is lacking, please raise an issue and I will review it.
 
 The psuedocode obtained from the libFHDEV_NET.so file revealed an AES Encryption step for the packets. The function AESSocketSend identified the type of AES encryption as **AES-128-ECB** simply due to the encryption loop visible in the function:  
 ```
@@ -183,5 +183,53 @@ Bytes 2,5   : iVar3         - LE int32, value = (last_block_offset + 20)
 Bytes 6,9   : param_3       - LE int32, original plaintext length
 Bytes 10,n  : ciphertext    - The 96-byte AES-ECB encrypted data.
 ```
+In total, a 106 byte packet is sent following the AES encryption layer and framing header. This command structure has been verified and an example exchange can be seen below, with the source code for the tool using found in the *tooling* directory.
+
+```
+[SUCCESS] Successfully connected to 172.19.10.0:8866
+Wire packet (106 bytes):
+49 54 64 00 00 00 53 00 00 00 bb b2 99 39 25 b2 
+a4 c3 dc 01 d8 b1 b5 11 5b 98 92 db 3e 6a fc 10 
+50 2d 79 80 0c a1 a5 e5 ba d4 aa 2d 95 15 81 b4 
+ab 82 2f 3f db d0 07 38 a6 2f 8a 31 44 a7 32 2c 
+11 dc 24 5d e0 17 f9 14 4c cc 9a a3 5b 13 14 7e 
+2e 76 f8 1e 22 c1 70 5b b1 27 a5 0b 32 60 d3 c0 
+f8 00 db d5 b7 7b 51 de 89 13 
+
+Login packet sent
+
+Response (106 bytes):
+49 54 64 00 00 00 53 00 00 00 b6 73 09 27 1c f5 
+ce 88 fc 78 71 39 69 f3 97 7d a5 0b 32 60 d3 c0 
+f8 00 db d5 b7 7b 51 de 89 13 a5 0b 32 60 d3 c0 
+f8 00 db d5 b7 7b 51 de 89 13 a5 0b 32 60 d3 c0 
+f8 00 db d5 b7 7b 51 de 89 13 36 ab 51 9f 82 4a 
+9c b3 44 a8 67 ef 57 37 be 8f 49 87 07 2b 74 82 
+e5 92 41 b1 f0 2d 5f fa 3b b5 
+
+Decrypted response (83 bytes):
+00 00 00 01 02 00 00 00 00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 
+00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 
+00 00 09 
+
+Device type byte:       0x00
+Response cmd_id:        0x01
+Response seq_id:        0x02
+Response error_code:    0x0000
+Payload byte:           0x09
+```
+
+
+
+
+
+
+
+
+
+
 
 
